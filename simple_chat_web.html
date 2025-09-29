@@ -1,0 +1,93 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Customer Support Chatbot (Client-side)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 20px; max-width:800px; margin:auto; }
+    .chat { border: 1px solid #ddd; padding: 12px; border-radius: 8px; }
+    .user { color: #0b6623; }
+    .bot { color: #0b1a66; }
+    .msg { margin:8px 0; }
+    input[type=text] { width:80%; padding:8px; }
+    button { padding:8px 12px; }
+  </style>
+</head>
+<body>
+  <h2>Simple Customer Support Chatbot (Client-side)</h2>
+  <div class="chat" id="chat"> </div>
+  <div style="margin-top:10px;">
+    <input type="text" id="q" placeholder="Type a customer question..." />
+    <button onclick="send()">Send</button>
+  </div>
+<script>
+const CATEGORIES = {
+  "Billing": {
+    keywords: ["payment","invoice","bill","charge","refund","subscription","card","billing"],
+    response: "For billing questions, please check your account settings or contact billing support at billing@example.com."
+  },
+  "Technical Support": {
+    keywords: ["error","problem","not working","issue","bug","crash","slow","connect","disconnect"],
+    response: "Please try restarting your device. If the problem persists, contact technical support at techsupport@example.com."
+  },
+  "General Inquiry": {
+    keywords: ["hours","location","contact","where","when","open","business hours","address"],
+    response: "Our business hours are 9 AM to 5 PM, Monday to Friday. You can contact us at info@example.com."
+  }
+};
+const ESCALATE = ["angry","frustrated","not happy","upset","furious","annoyed","disappointed"];
+
+function normalize(t) { return t.toLowerCase(); }
+
+function classifyQuestion(text) {
+  const t = normalize(text);
+  const counts = {};
+  for (const [cat, info] of Object.entries(CATEGORIES)) {
+    counts[cat] = 0;
+    for (const kw of info.keywords) {
+      const pattern = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\b', 'g');
+      const m = t.match(pattern);
+      if (m) counts[cat] += m.length;
+    }
+  }
+  const maxCat = Object.keys(counts).reduce((a,b)=> counts[a] >= counts[b] ? a : b);
+  const maxCount = counts[maxCat];
+  if (maxCount === 0) return {category:'Unknown', response:"I'm sorry — I didn't quite understand. Could you please clarify?", escalate:false};
+  return {category: maxCat, response: CATEGORIES[maxCat].response, escalate: false};
+}
+
+function detectEscalation(text) {
+  const t = normalize(text);
+  for (const kw of ESCALATE) {
+    const pattern = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\b');
+    if (pattern.test(t)) return true;
+  }
+  return false;
+}
+
+function appendToChat(who, text, cls='') {
+  const el = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.innerHTML = '<strong>' + who + ':</strong> ' + text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function send() {
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+  appendToChat('You', q, 'user');
+  const res = classifyQuestion(q);
+  if (detectEscalation(q)) {
+    res.response = "I understand this is frustrating. Let me connect you with a human representative. " + res.response;
+    res.escalate = true;
+  }
+  appendToChat('Bot ('+res.category+')', res.response, 'bot');
+  document.getElementById('q').value = '';
+}
+</script>
+</body>
+</html>
